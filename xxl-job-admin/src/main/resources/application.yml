@@ -13,10 +13,10 @@ spring:
     expose-request-attributes: true
     expose-session-attributes: true
   datasource:
-      url: jdbc:mysql://127.0.0.1:3306/xxl-job?autoReconnect=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false
+      url: jdbc:mysql://118.24.247.133:3306/adcloud?useUnicode=true&characterEncoding=UTF-8
       username: root
-      password: 123456
-      db-name: xxl-job
+      password: AEo5(^wE%Qh6Cj(e
+      db-name: adcloud
       filters: log4j,wall,mergeStat
 mybatis:
   mapperLocations: classpath:mybatis-mapper/*.xml
@@ -28,7 +28,7 @@ xxl:
       port: 25
       host: smtp.163.com
       sendNick: 《任务调度平台XXL-JOB》
-      username: 15910920083@163.com
+      username: 15851826559@163.com
     login:
       password: 123456
       username: admin

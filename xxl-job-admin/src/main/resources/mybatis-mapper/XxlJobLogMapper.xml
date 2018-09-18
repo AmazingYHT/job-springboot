@@ -9,11 +9,10 @@
 		<result column="job_group" property="jobGroup" />
 		<result column="job_id" property="jobId" />
 
-		<result column="glue_type" property="glueType" />
-
 		<result column="executor_address" property="executorAddress" />
 		<result column="executor_handler" property="executorHandler" />
 	    <result column="executor_param" property="executorParam" />
+		<result column="executor_fail_retry_count" property="executorFailRetryCount" />
 	    
 	    <result column="trigger_time" property="triggerTime" />
 	    <result column="trigger_code" property="triggerCode" />
@@ -29,10 +28,10 @@
 		t.id,
 		t.job_group,
 		t.job_id,
-		t.glue_type,
 		t.executor_address,
 		t.executor_handler,
 		t.executor_param,
+		t.executor_fail_retry_count,
 		t.trigger_time,
 		t.trigger_code,
 		t.trigger_msg,
@@ -43,9 +42,9 @@
 	
 	<select id="pageList" resultMap="XxlJobLog">
 		SELECT <include refid="Base_Column_List" />
-		FROM XXL_JOB_QRTZ_TRIGGER_LOG AS t
+		FROM QRTZ_TRIGGER_LOG_CNAD AS t
 		<trim prefix="WHERE" prefixOverrides="AND | OR" >
-			<if test="jobGroup != null and jobGroup != ''">
+			<if test="jobGroup gt 0">
 				AND t.job_group = #{jobGroup}
 			</if>
 			<if test="jobId gt 0">
@@ -62,12 +61,13 @@
 			</if>
 			<if test="logStatus == 2" >
 				AND (
-					(t.trigger_code <![CDATA[ > ]]> 0 AND t.trigger_code!=200) ||
-					(t.handle_code <![CDATA[ > ]]> 0 AND t.handle_code!=200)
+					t.trigger_code NOT IN (0, 200) OR
+					t.handle_code NOT IN (0, 200)
 				)
 			</if>
 			<if test="logStatus == 3" >
-				AND (t.trigger_code = 200 AND t.handle_code=0)
+				AND t.trigger_code = 200
+				AND t.handle_code = 0
 			</if>
 		</trim>
 		ORDER BY id DESC
@@ -76,9 +76,9 @@
 	
 	<select id="pageListCount" resultType="int">
 		SELECT count(1)
-		FROM XXL_JOB_QRTZ_TRIGGER_LOG AS t
+		FROM QRTZ_TRIGGER_LOG_CNAD AS t
 		<trim prefix="WHERE" prefixOverrides="AND | OR" >
-			<if test="jobGroup != null and jobGroup != ''">
+			<if test="jobGroup gt 0">
 				AND t.job_group = #{jobGroup}
 			</if>
 			<if test="jobId gt 0">
@@ -95,30 +95,35 @@
 			</if>
 			<if test="logStatus == 2" >
 				AND (
-				(t.trigger_code <![CDATA[ > ]]> 0 AND t.trigger_code!=200) ||
-				(t.handle_code <![CDATA[ > ]]> 0 AND t.handle_code!=200)
+					t.trigger_code NOT IN (0, 200) OR
+					t.handle_code NOT IN (0, 200)
 				)
 			</if>
 			<if test="logStatus == 3" >
-				AND (t.trigger_code = 200 AND t.handle_code=0)
+				AND t.trigger_code = 200
+				AND t.handle_code = 0
 			</if>
 		</trim>
 	</select>
 	
 	<select id="load" parameterType="java.lang.Integer" resultMap="XxlJobLog">
 		SELECT <include refid="Base_Column_List" />
-		FROM XXL_JOB_QRTZ_TRIGGER_LOG AS t
+		FROM QRTZ_TRIGGER_LOG_CNAD AS t
 		WHERE t.id = #{id}
 	</select>
 
 	
 	<insert id="save" parameterType="com.xxl.job.admin.core.model.XxlJobLog" useGeneratedKeys="true" keyProperty="id" >
-		INSERT INTO XXL_JOB_QRTZ_TRIGGER_LOG (
+		INSERT INTO QRTZ_TRIGGER_LOG_CNAD (
 			`job_group`,
-			`job_id`
+			`job_id`,
+			`trigger_code`,
+			`handle_code`
 		) VALUES (
 			#{jobGroup},
-			#{jobId}
+			#{jobId},
+			#{triggerCode},
+			#{handleCode}
 		);
 		<!--<selectKey resultType="java.lang.Integer" order="AFTER" keyProperty="id">
 			SELECT LAST_INSERT_ID() 
@@ -126,20 +131,20 @@
 	</insert>
 
 	<update id="updateTriggerInfo" >
-		UPDATE XXL_JOB_QRTZ_TRIGGER_LOG
+		UPDATE QRTZ_TRIGGER_LOG_CNAD
 		SET
-		    `glue_type`= #{glueType},
 			`trigger_time`= #{triggerTime},
 			`trigger_code`= #{triggerCode},
 			`trigger_msg`= #{triggerMsg},
 			`executor_address`= #{executorAddress},
 			`executor_handler`=#{executorHandler},
-			`executor_param`= #{executorParam}
+			`executor_param`= #{executorParam},
+			`executor_fail_retry_count`= #{executorFailRetryCount}
 		WHERE `id`= #{id}
 	</update>
 
 	<update id="updateHandleInfo">
-		UPDATE XXL_JOB_QRTZ_TRIGGER_LOG
+		UPDATE QRTZ_TRIGGER_LOG_CNAD
 		SET 
 			`handle_time`= #{handleTime}, 
 			`handle_code`= #{handleCode},
@@ -148,13 +153,13 @@
 	</update>
 	
 	<delete id="delete" >
-		delete from XXL_JOB_QRTZ_TRIGGER_LOG
+		delete from QRTZ_TRIGGER_LOG_CNAD
 		WHERE job_id = #{jobId}
 	</delete>
 
 	<select id="triggerCountByHandleCode" resultType="int" >
 		SELECT count(1)
-		FROM XXL_JOB_QRTZ_TRIGGER_LOG AS t
+		FROM QRTZ_TRIGGER_LOG_CNAD AS t
 		<trim prefix="WHERE" prefixOverrides="AND | OR" >
 			<if test="handleCode gt 0">
 				AND t.handle_code = #{handleCode}
@@ -166,15 +171,15 @@
 		SELECT
 			DATE_FORMAT(trigger_time,'%Y-%m-%d') triggerDay,
 			COUNT(handle_code) triggerDayCount,
-			SUM(CASE WHEN handle_code = 0 then 1 else 0 end) as triggerDayCountRunning,
+			SUM(CASE WHEN (trigger_code = 200 and handle_code = 0) then 1 else 0 end) as triggerDayCountRunning,
 			SUM(CASE WHEN handle_code = 200 then 1 else 0 end) as triggerDayCountSuc
-		FROM XXL_JOB_QRTZ_TRIGGER_LOG
+		FROM QRTZ_TRIGGER_LOG_CNAD
 		WHERE trigger_time BETWEEN #{from} and #{to}
 		GROUP BY triggerDay;
     </select>
 
 	<delete id="clearLog" >
-		delete from XXL_JOB_QRTZ_TRIGGER_LOG
+		delete from QRTZ_TRIGGER_LOG_CNAD
 		<trim prefix="WHERE" prefixOverrides="AND | OR" >
 			<if test="jobGroup gt 0">
 				AND job_group = #{jobGroup}
@@ -188,7 +193,7 @@
 			<if test="clearBeforeNum gt 0">
 				AND id NOT in(
 					SELECT id FROM(
-						SELECT id FROM XXL_JOB_QRTZ_TRIGGER_LOG AS t
+						SELECT id FROM QRTZ_TRIGGER_LOG_CNAD AS t
 						<trim prefix="WHERE" prefixOverrides="AND | OR" >
 							<if test="jobGroup gt 0">
 								AND t.job_group = #{jobGroup}

@@ -32,7 +32,6 @@ public class XxlJobLogDaoTest {
         int ret1 = xxlJobLogDao.save(log);
         XxlJobLog dto = xxlJobLogDao.load(log.getId());
 
-        log.setGlueType("1");
         log.setTriggerTime(new Date());
         log.setTriggerCode(1);
         log.setTriggerMsg("1");
