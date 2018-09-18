@@ -36,7 +36,6 @@ public class XxlJobExecutor implements ApplicationContextAware {
     private String accessToken;
     private String logPath;
     private int logRetentionDays;
-    private boolean canStart = true;
 
     public void setAdminAddresses(String adminAddresses) {
         this.adminAddresses = adminAddresses;
@@ -59,9 +58,6 @@ public class XxlJobExecutor implements ApplicationContextAware {
     public void setLogRetentionDays(int logRetentionDays) {
         this.logRetentionDays = logRetentionDays;
     }
-    public void setCanStart(boolean canStart) {
-        this.canStart = canStart;
-    }
 
     // ---------------------- applicationContext ----------------------
     private static ApplicationContext applicationContext;
@@ -76,28 +72,26 @@ public class XxlJobExecutor implements ApplicationContextAware {
 
     // ---------------------- start + stop ----------------------
     public void start() throws Exception {
-        if(canStart) {
-            // init admin-client
-            initAdminBizList(adminAddresses, accessToken);
+        // init admin-client
+        initAdminBizList(adminAddresses, accessToken);
 
-            // init executor-jobHandlerRepository
-            initJobHandlerRepository(applicationContext);
+        // init executor-jobHandlerRepository
+        initJobHandlerRepository(applicationContext);
 
-            // init logpath
-            XxlJobFileAppender.initLogPath(logPath);
+        // init logpath
+        XxlJobFileAppender.initLogPath(logPath);
 
-            // init executor-server
-            initExecutorServer(port, ip, appName, accessToken);
+        // init executor-server
+        initExecutorServer(port, ip, appName, accessToken);
 
-            // init JobLogFileCleanThread
-            JobLogFileCleanThread.getInstance().start(logRetentionDays);
-        }
+        // init JobLogFileCleanThread
+        JobLogFileCleanThread.getInstance().start(logRetentionDays);
     }
     public void destroy(){
         // destory JobThreadRepository
         if (JobThreadRepository.size() > 0) {
             for (Map.Entry<Integer, JobThread> item: JobThreadRepository.entrySet()) {
-                removeJobThread(item.getKey(), "Web容器销毁终止");
+                removeJobThread(item.getKey(), "web container destroy and kill the job.");
             }
             JobThreadRepository.clear();
         }
